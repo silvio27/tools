@@ -1,0 +1,38 @@
+
+import multiprocessing
+
+if __name__ == "__main__":
+    mutiprocessing.freeze_support()
+    uvicorn.run("app:app", host="0.0.0.0", port=58000, reload=False, workers=2)
+
+说明：如果使用mutiprocessing 需要吧app加到hiddenimports中，先打包app.py 然后找到app.spec,修改hiddenimports，再次打包 pyinstaller -F app.spec
+
+hiddenimports=[
+    'uvicorn.logging',
+    'uvicorn.loops',
+    'uvicorn.loops.auto',
+    'uvicorn.protocols',
+    'uvicorn.protocols.http',
+    'uvicorn.protocols.http.auto',
+    'uvicorn.protocols.websockets',
+    'uvicorn.protocols.websockets.auto',
+    'uvicorn.lifespan',
+    'uvicorn.lifespan.on',
+    'app'
+]
+
+
+https://stackoverflow.com/questions/65438069/uvicorn-and-fastapi-with-pyinstaller-problem-when-uvicorn-workers1
+
+#####################################################################################################################################
+以下方法展示忽略
+
+hiddenimports=['uvicorn.lifespan.off','uvicorn.lifespan.on','uvicorn.lifespan',
+'uvicorn.protocols.websockets.auto','uvicorn.protocols.websockets.wsproto_impl',
+'uvicorn.protocols.websockets_impl','uvicorn.protocols.http.auto',
+'uvicorn.protocols.http.h11_impl','uvicorn.protocols.http.httptools_impl',
+'uvicorn.protocols.websockets','uvicorn.protocols.http','uvicorn.protocols',
+'uvicorn.loops.auto','uvicorn.loops.asyncio','uvicorn.loops.uvloop','uvicorn.loops',
+'uvicorn.logging'],
+
+https://stackoverflow.com/questions/64281002/pyinstaller-compiled-uvicorn-server-does-not-start-correctly
