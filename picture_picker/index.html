@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>local-comp</title>
+    <script src="https://unpkg.com/vue@next"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/lib/theme-chalk/index.css">
+    <!-- 引入组件库 -->
+    <script src="https://unpkg.com/element-plus/lib/index.full.js"></script>
+</head>
+<body>
+<div style="text-align: center;border: 5px dashed lightblue">
+    <div id="app"></div>
+</div>
+
+
+</body>
+<script>
+
+    const showImg = {
+        props: ['pic_url'],
+        template: `
+          <img :src="pic_url" alt="" height="300">
+        `
+    }
+
+    // 分类方案后期读取文件
+    const btn_groups = {
+        emits: ['show_btn_groups_res'],
+        data() {
+            return {
+                lists: ''
+            }
+        },
+        mounted() {
+            this.get_taglists()
+        },
+        methods: {
+            get_taglists() {
+                axios
+                    .get('http://localhost:8888/data/taglists/Sheet1')
+                    .then(res => this.lists = res.data)
+            },
+        },
+        template: `
+          <br>
+          <template v-for="(item,index) in lists">
+            <el-popover
+                placement="bottom"
+                width="auto"
+                trigger="hover"
+            >
+              <template style="text-align: center; margin: 0" v-for="i in item.tags">
+                <el-button size="medium" @click="$emit('show_btn_groups_res',item.name +'-'+ i)">{{ i }}</el-button>
+              </template>
+              <template #reference>
+                <el-button :type="item.type" @click="$emit('show_btn_groups_res',item.name)">{{ item.name }}</el-button>
+              </template>
+            </el-popover>
+          </template>
+        `
+    }
+
+    // 统计抽屉
+    const ltr_drawer = {
+        emits: [''],
+        data() {
+            return {
+                lists: '',
+                drawer: false,
+                direction: 'ltr',
+            }
+        },
+        mounted() {
+            this.get_sumlists()
+        },
+        methods: {
+            get_sumlists() {
+                this.drawer = true
+                axios
+                    .get('http://localhost:8888/data/sumlists/')
+                    .then(res => this.lists = res.data)
+            },
+        },
+        template: `
+          <el-button style="position:absolute;left:5%;bottom:5%" type="primary" plain size="mini" round
+                     @click="get_sumlists">显示统计
+          </el-button>
+          <el-drawer
+              title="我是标题"
+              v-model="drawer"
+              :direction="direction"
+              destroy-on-close>
+          <div v-for="i in lists">{{ i }}</div>
+
+          </el-drawer>
+        `
+    }
+
+
+    const App = {
+        components: {
+            'show-img': showImg,
+            'btn_groups': btn_groups,
+            'ltr_drawer': ltr_drawer
+        },
+        data() {
+            return {
+                pic_index: 0,
+                pic_url: '',
+                pic_lists: '',
+                pic_data: '',
+                back_url: '',
+                len_list: 0
+            }
+        },
+        mounted() {
+            this.get_pic_lists_easy()
+
+
+            // 后期做个异步处理，等上面请求完成
+            setTimeout(() => {
+                this.according_key_get_pic_url()
+                this.len_list = this.pic_lists.length - 1
+                // console.log(this.len_list)
+            }, 500)
+        },
+        methods: {
+
+            // 获得图片列表
+            get_pic_lists_easy() {
+                axios
+                    .get('http://localhost:8888/data/keylist')
+                    .then(res => this.pic_lists = res.data)
+            },
+            // 2.根据key值,返回照片全部信息,和图片url
+            according_key_get_pic_url() {
+                _this = this
+                axios
+                    .get('http://localhost:8888/data/key/' + this.pic_lists[this.pic_index])
+                    .then(function (res) {
+                        _this.pic_data = res.data
+                        _this.pic_url = 'http://localhost:8888/image/' + res.data['name']
+                    })
+            },
+
+            write_to_file(a) {
+                alert('已更新' + a)
+            },
+            // 下一个
+            next_item() {
+                if (this.pic_index < this.pic_lists.length - 1) {
+                    this.pic_index += 1
+                    this.according_key_get_pic_url()
+                }
+            },
+            // 上一个
+            last_item() {
+                if (this.pic_index > 0) {
+                    this.pic_index -= 1
+                    this.according_key_get_pic_url()
+                } else {
+                    alert("到头了！！！")
+                }
+            },
+
+            handlebtnclicked(a) {
+                this.pic_data['sort_tags'] = a
+                this.back_url = 'http://localhost:8888/data/backdata/' + this.pic_lists[this.pic_index] + '/' + a
+                console.log(this.back_url)
+                axios
+                    .get(this.back_url)
+                    .then(res => console.log(res.data))
+                this.next_item()
+            },
+            gen_pic() {
+                axios
+                    .get('http://localhost:8888/generate_pic')
+                    .then(res => alert(res.data))
+            }
+
+        },
+        template: `
+          <br>
+          <el-slider v-model="pic_index" :max="len_list" @change="according_key_get_pic_url()"></el-slider>
+
+          <h3>{{ pic_data['sort_tags'] ? pic_data['sort_tags'] : '空' }}</h3>
+          <show-img :pic_url="pic_url"></show-img>
+          <btn_groups @show_btn_groups_res="handlebtnclicked"></btn_groups>
+          <el-button style="position:absolute;left:10%;top:30%" circle icon="el-icon-back"
+                     @click="last_item()"></el-button>
+          <el-button style="position:absolute;right:10%;top:30%" circle icon="el-icon-right"
+                     @click="next_item()"></el-button>
+          <el-button v-if="pic_index == pic_lists.length-1"
+                     style="position:absolute;left:5%;top:5%;border: #0b6fde 10px solid" type="primary" plain
+                     @click="gen_pic">
+          生成图片
+          </el-button>
+          <ltr_drawer></ltr_drawer>
+        `
+    }
+
+
+    const app = Vue.createApp(App);
+
+
+    app.use(ElementPlus);
+    const vm = app.mount('#app');
+</script>
+</html>
